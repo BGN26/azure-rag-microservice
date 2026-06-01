@@ -30,6 +30,8 @@ jobs:
         pip install -r requirements.txt
 
     - name: Ejecutar Tests (Pytest)
+      env:
+        OPENAI_API_KEY: "sk-fake-key-para-las-github-actions"
       run: |
         pytest
 
