@@ -6,6 +6,8 @@ app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
 )
+# Revisar mas adelante, no pillo totalmente lo que pone en la docuemntacion
+app.include_router(api_router, prefix=settings.API_V1_STR)
 
 @app.get("/health", tags=["Health"])
 async def health_check():
