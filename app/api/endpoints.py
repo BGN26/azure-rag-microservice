@@ -1,6 +1,4 @@
-import os
-import tempfile
-from fastapi import APIRouter, UploadFile, File, status
+from fastapi import APIRouter, UploadFile, File, status, HTTPException
 from pydantic import BaseModel
 from app.services.langchain_service import process_pdf, generate_answer
 from app.worker.tasks import process_pdf_async
@@ -25,10 +23,10 @@ async def upload_document(file: UploadFile = File(...)):
     if not file.filename.endswith('.pdf'):
         raise HTTPException(status_code=400, detail="Solo se permiten archivos PDF")
 
-        # guardado rapido de archivo local
+    # guardado rapido de archivo local
     fake_saved_path = f"/tmp/storage/{file.filename}"
 
-        # mandamos la tarea a la cola de Celery
+    # mandamos la tarea a la cola de Celery
     task = process_pdf_async.delay(file.filename, fake_saved_path)
 
     return {

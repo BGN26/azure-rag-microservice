@@ -1,8 +1,6 @@
-import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 from app.main import app
-from fastapi import HTTPException
 
 # Creamos un cliente de pruebas
 client = TestClient(app)
