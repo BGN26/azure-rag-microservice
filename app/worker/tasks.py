@@ -1,22 +1,25 @@
-import time
+import os
 from app.worker.celery_app import celery_app
+from app.services.langchain_service import process_pdf
 
 
 @celery_app.task(name="tasks.process_pdf_async", bind=True, max_retries=3)
 def process_pdf_async(self, file_name: str, file_path: str):
 
-    print(f"Procesando: {file_name}")
+    print(f"[Worker] Procesando: {file_name}")
 
     try:
-        #Pendiente de unir a langchainservice
-        for i in range(1, 6):
-            time.sleep(1)
-            print(f"Procesando, {i * 20}% completo")
+        print("[Worker] Extrayendo texto ...")
+        process_pdf(file_path)
 
-        print(f"Documento '{file_name}' indexado.")
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            print(f"[Worker] Archivo temporal eliminado: {file_path}")
+
+        print(f"[Worker] Documento '{file_name}' indexado.")
         return {"status": "success", "processed_file": file_name}
 
     except Exception as exc:
-        print(f"Error procesando el archivo. Reintentandolo...")
-        # Si falla (por ejemplo, timeout de OpenAI), lo reintenta
-        raise self.retry(exc=exc, countdown=5)
+        print(f"[Worker] Error en LangChain/OpenAI: {str(exc)}. Reintentando en 10s...")
+        # Si falla la tarea se reintenta automaticamente
+        raise self.retry(exc=exc, countdown=10)

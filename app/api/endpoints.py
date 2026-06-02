@@ -1,11 +1,14 @@
-from fastapi import APIRouter, UploadFile, File, status, HTTPException
-from pydantic import BaseModel
-from app.services.langchain_service import process_pdf, generate_answer
+import os
+import shutil
+from fastapi import APIRouter, UploadFile, File, HTTPException, status
 from app.worker.tasks import process_pdf_async
+from pydantic import BaseModel
+from app.services.langchain_service import generate_answer
 # APIRouter nos permite organizar las rutas fuera del archivo main.py
 router = APIRouter()
 
-
+TEMP_DIR = "/tmp/storage"
+os.makedirs(TEMP_DIR, exist_ok=True)
 
 class QueryRequest(BaseModel):
     question: str
@@ -23,14 +26,16 @@ async def upload_document(file: UploadFile = File(...)):
     if not file.filename.endswith('.pdf'):
         raise HTTPException(status_code=400, detail="Solo se permiten archivos PDF")
 
-    # guardado rapido de archivo local
-    fake_saved_path = f"/tmp/storage/{file.filename}"
+    # guardado real
+    file_path = os.path.join(TEMP_DIR, file.filename)
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
 
     # mandamos la tarea a la cola de Celery
-    task = process_pdf_async.delay(file.filename, fake_saved_path)
+    task = process_pdf_async.delay(file.filename, file_path)
 
     return {
-            "message": "Archivo recibido correctamente. Procesamiento en segundo plano iniciado.",
+            "message": "Archivo recibido correctamente. Procesamiento iniciado.",
             "task_id": task.id,
             "status": "Processing"
         }
