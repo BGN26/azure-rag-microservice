@@ -2,6 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import patch
 from app.main import app
+from fastapi import HTTPException
 
 # Creamos un cliente de pruebas
 client = TestClient(app)
@@ -23,18 +24,21 @@ def test_upload_document_invalid_extension():
     assert "Solo se permiten archivos PDF" in response.json()["detail"]
 
 
-@patch("app.api.endpoints.process_pdf")
-def test_upload_document_success(mock_process_pdf):
+@patch("app.api.endpoints.process_pdf_async.delay")
+def test_upload_document_success(mock_celery_delay):
     #Prueba que un PDF válido es aceptado (sin gastar créditos de OpenAI).
+    mock_task = MagicMock()
+    mock_task.id = "mock-task-uuid-12345"
+    mock_celery_delay.return_value = mock_task
 
-    mock_process_pdf.return_value = True
+    file_payload = {"file": ("documento.pdf", b"%PDF-1.4 ...", "application/pdf")}
 
-    files = {"file": ("documento.pdf", b"contenido pdf falso", "application/pdf")}
-    response = client.post("/api/v1/upload", files=files)
+    response = client.post("/api/v1/upload", files=file_payload)
 
-    assert response.status_code == 200
-    assert response.json()["filename"] == "documento.pdf"
-
+    assert response.status_code == 202
+    assert response.json()["status"] == "Processing"
+    assert response.json()["task_id"] == "mock-task-uuid-12345"
+    mock_celery_delay.assert_called_once_with("documento.pdf", "/tmp/storage/documento.pdf")
 
 @patch("app.api.endpoints.generate_answer")
 def test_query_document(mock_generate_answer):
