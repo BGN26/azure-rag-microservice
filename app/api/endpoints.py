@@ -1,8 +1,9 @@
 import os
 import tempfile
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, status
 from pydantic import BaseModel
 from app.services.langchain_service import process_pdf, generate_answer
+from app.worker.tasks import process_pdf_async
 # APIRouter nos permite organizar las rutas fuera del archivo main.py
 router = APIRouter()
 
@@ -17,35 +18,24 @@ class QueryResponse(BaseModel):
 
 
 # Endpoint para subir el PDF
-@router.post("/upload", tags=["Documents"])
+@router.post("/upload", status_code=status.HTTP_202_ACCEPTED)
 async def upload_document(file: UploadFile = File(...)):
 
     # Comprobamos que sea un PDF
     if not file.filename.endswith('.pdf'):
         raise HTTPException(status_code=400, detail="Solo se permiten archivos PDF")
 
-        # Creamos una ruta temporal para guardar el archivo
-    temp_dir = tempfile.gettempdir()
-    temp_file_path = os.path.join(temp_dir, file.filename)
+        # guardado rapido de archivo local
+    fake_saved_path = f"/tmp/storage/{file.filename}"
 
-        # Guardamos el archivo en el disco
-    with open(temp_file_path, "wb") as buffer:
-        buffer.write(await file.read())
-
-    try:
-            # Enviamos el archivo al servicio de LangChain
-        await process_pdf(temp_file_path, file.filename)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error procesando el PDF: {str(e)}")
-    finally:
-        # borramos el archivo temporal cuando termine
-        if os.path.exists(temp_file_path):
-            os.remove(temp_file_path)
+        # mandamos la tarea a la cola de Celery
+    task = process_pdf_async.delay(file.filename, fake_saved_path)
 
     return {
-        "filename": file.filename,
-        "status": "Documento procesado"
-    }
+            "message": "Archivo recibido correctamente. Procesamiento en segundo plano iniciado.",
+            "task_id": task.id,
+            "status": "Processing"
+        }
 
 
 #Endpoint para hacer preguntas
