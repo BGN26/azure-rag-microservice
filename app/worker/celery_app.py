@@ -8,7 +8,7 @@ celery_app = Celery(
     "rag_worker",
     broker=REDIS_URL,
     backend=REDIS_URL,
-    include=["app.worker.tasks"] # Lo linkeamos con las tareas
+    include=["app.worker.tasks"],  # Lo linkeamos con las tareas
 )
 
 # Config de la documentacion(revisar??)
@@ -18,6 +18,6 @@ celery_app.conf.update(
     result_serializer="json",
     timezone="UTC",
     enable_utc=True,
-    task_ack_late=True, # La tarea no se borra de la cola hasta acabar(comprobar si lastra la app)
-    worker_prefetch_multiplier=1
+    task_ack_late=True,  # La tarea no se borra de la cola hasta acabar(comprobar si lastra la app)
+    worker_prefetch_multiplier=1,
 )

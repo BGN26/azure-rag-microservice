@@ -1,4 +1,3 @@
-import os
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
@@ -10,7 +9,8 @@ from app.config import settings
 
 CHROMA_PATH = "./.chroma"
 
-#preparacion del documento
+
+# preparacion del documento
 async def process_pdf(file_path: str, filename: str):
 
     loader = PyPDFLoader(file_path)
@@ -22,9 +22,7 @@ async def process_pdf(file_path: str, filename: str):
     embeddings = OpenAIEmbeddings(openai_api_key=settings.OPENAI_API_KEY)
 
     Chroma.from_documents(
-        documents=splits,
-        embedding=embeddings,
-        persist_directory=CHROMA_PATH
+        documents=splits, embedding=embeddings, persist_directory=CHROMA_PATH
     )
     return True
 
@@ -33,7 +31,8 @@ def format_docs(docs):
 
     return "\n\n".join(doc.page_content for doc in docs)
 
-#fase de rag
+
+# fase de rag
 async def generate_answer(question: str) -> str:
 
     embeddings = OpenAIEmbeddings(openai_api_key=settings.OPENAI_API_KEY)
@@ -41,9 +40,7 @@ async def generate_answer(question: str) -> str:
     retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
 
     llm = ChatOpenAI(
-        model="gpt-5.4-mini",
-        openai_api_key=settings.OPENAI_API_KEY,
-        temperature=0
+        model="gpt-5.4-mini", openai_api_key=settings.OPENAI_API_KEY, temperature=0
     )
 
     system_prompt = (
@@ -54,19 +51,19 @@ async def generate_answer(question: str) -> str:
         "Contexto:\n{context}"
     )
 
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", system_prompt),
-        ("human", "{input}"),
-    ])
-
-
-    rag_chain = (
-            {"context": retriever | format_docs, "input": RunnablePassthrough()}
-            | prompt
-            | llm
-            | StrOutputParser()
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            ("system", system_prompt),
+            ("human", "{input}"),
+        ]
     )
 
+    rag_chain = (
+        {"context": retriever | format_docs, "input": RunnablePassthrough()}
+        | prompt
+        | llm
+        | StrOutputParser()
+    )
 
     response = rag_chain.invoke(question)
 

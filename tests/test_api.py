@@ -24,7 +24,7 @@ def test_upload_document_invalid_extension():
 
 @patch("app.api.endpoints.process_pdf_async.delay")
 def test_upload_document_success(mock_celery_delay):
-    #Prueba que un PDF válido es aceptado (sin gastar créditos de OpenAI).
+    # Prueba que un PDF válido es aceptado (sin gastar créditos de OpenAI).
     mock_task = MagicMock()
     mock_task.id = "mock-task-uuid-12345"
     mock_celery_delay.return_value = mock_task
@@ -36,15 +36,23 @@ def test_upload_document_success(mock_celery_delay):
     assert response.status_code == 202
     assert response.json()["status"] == "Processing"
     assert response.json()["task_id"] == "mock-task-uuid-12345"
-    mock_celery_delay.assert_called_once_with("documento.pdf", "/tmp/storage/documento.pdf")
+    mock_celery_delay.assert_called_once_with(
+        "documento.pdf", "/tmp/storage/documento.pdf"
+    )
+
 
 @patch("app.api.endpoints.generate_answer")
 def test_query_document(mock_generate_answer):
     # Simulamos lo que respondería ChatGPT
-    mock_generate_answer.return_value = "Esta es una respuesta simulada para no gastar creditos."
+    mock_generate_answer.return_value = (
+        "Esta es una respuesta simulada para no gastar creditos."
+    )
 
     payload = {"question": "¿De que trata este documento?"}
     response = client.post("/api/v1/query", json=payload)
 
     assert response.status_code == 200
-    assert response.json()["answer"] == "Esta es una respuesta simulada para no gastar creditos."
+    assert (
+        response.json()["answer"]
+        == "Esta es una respuesta simulada para no gastar creditos."
+    )

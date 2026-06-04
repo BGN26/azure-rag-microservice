@@ -11,11 +11,12 @@ app = FastAPI(
 app.include_router(api_router, prefix=settings.API_V1_STR)
 app.include_router(analytics_router, prefix="/api/v1/analytics")
 
+
 @app.get("/health", tags=["Health"])
 async def health_check():
 
     return {
         "status": "healthy",
         "project": settings.PROJECT_NAME,
-        "version": settings.VERSION
+        "version": settings.VERSION,
     }

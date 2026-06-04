@@ -4,11 +4,13 @@ from fastapi import APIRouter, UploadFile, File, HTTPException, status
 from app.worker.tasks import process_pdf_async
 from pydantic import BaseModel
 from app.services.langchain_service import generate_answer
+
 # APIRouter nos permite organizar las rutas fuera del archivo main.py
 router = APIRouter()
 
 TEMP_DIR = "/tmp/storage"
 os.makedirs(TEMP_DIR, exist_ok=True)
+
 
 class QueryRequest(BaseModel):
     question: str
@@ -23,7 +25,7 @@ class QueryResponse(BaseModel):
 async def upload_document(file: UploadFile = File(...)):
 
     # Comprobamos que sea un PDF
-    if not file.filename.endswith('.pdf'):
+    if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Solo se permiten archivos PDF")
 
     # guardado real
@@ -35,13 +37,13 @@ async def upload_document(file: UploadFile = File(...)):
     task = process_pdf_async.delay(file.filename, file_path)
 
     return {
-            "message": "Archivo recibido correctamente. Procesamiento iniciado.",
-            "task_id": task.id,
-            "status": "Processing"
-        }
+        "message": "Archivo recibido correctamente. Procesamiento iniciado.",
+        "task_id": task.id,
+        "status": "Processing",
+    }
 
 
-#Endpoint para hacer preguntas
+# Endpoint para hacer preguntas
 @router.post("/query", response_model=QueryResponse, tags=["AI Chat"])
 async def query_document(request: QueryRequest):
     try:
@@ -49,4 +51,6 @@ async def query_document(request: QueryRequest):
         return QueryResponse(answer=answer)
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error generando respuesta: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Error generando respuesta: {str(e)}"
+        )
